@@ -16,23 +16,40 @@ import os
 MY_EMAIL = os.environ.get("MY_EMAIL")
 MY_PASSWORD = os.environ.get("MY_PASSWORD")
 
-today = datetime.now()
-today_tuple = (today.month, today.day)
+now = dt.datetime.today()
+today_day = now.day
+today_month = now.month
+today = (today_month,today_day)
 
-data = pandas.read_csv("birthdays.csv")
-birthdays_dict = {(data_row["month"], data_row["day"])                  : data_row for (index, data_row) in data.iterrows()}
-if today_tuple in birthdays_dict:
-    birthday_person = birthdays_dict[today_tuple]
-    file_path = f"letter_templates/letter_{random.randint(1, 3)}.txt"
-    with open(file_path) as letter_file:
-        contents = letter_file.read()
-        contents = contents.replace("[NAME]", birthday_person["name"])
+df = pandas.read_csv("birthdays.csv")
+df = df.dropna()
+df["year"] = df["year"].astype(int)
+df["month"] = df["month"].astype(int)
+df["day"] = df["day"].astype(int)
 
-    with smtplib.SMTP("YOUR EMAIL PROVIDER SMTP SERVER ADDRESS") as connection:
+birthdays_dict = {
+    (row["month"], row["day"]): row
+    for (_, row) in df.iterrows()
+}
+
+if today in birthdays_dict:
+    person = birthdays_dict[today]
+    person_name = person["name"]
+    person_email = person["email"]
+    send_email = True
+
+    random_letter_template = random.choice(["letter_1.txt","letter_2.txt","letter_3.txt"])
+
+    with open(f"letter_templates/{random_letter_template}","r") as f:
+        letter = f.read()
+        customized_letter = letter.replace("[NAME]",person_name)
+
+    with smtplib.SMTP("smtp.gmail.com",port=587) as connection:
+        #make connection secure
         connection.starttls()
-        connection.login(MY_EMAIL, MY_PASSWORD)
+        connection.login(user=MY_EMAIL, password=MY_PASSWORD)
         connection.sendmail(
-            from_addr=MY_EMAIL,
-            to_addrs=birthday_person["email"],
-            msg=f"Subject:Happy Birthday!\n\n{contents}"
+            from_addr=my_email,
+            to_addrs=my_email,
+            msg=f"Subject:Happy Birthday\n\n{customized_letter}"
         )
